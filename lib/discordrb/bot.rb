@@ -831,17 +831,19 @@ module Discordrb
     #       end
     #     end
     #   end
-    def register_application_command(name, description, server_id: nil, default_permission: nil, type: :chat_input)
+    def register_application_command(name, description, server_id: nil, default_permission: nil, type: :chat_input, integration_types: nil, contexts: nil)
       type = ApplicationCommand::TYPES[type] || type
+      integration_types = integration_types&.map { |type| ApplicationCommand::INTEGRATION_TYPES[type] || type }
+      contexts = contexts&.map { |type| ApplicationCommand::CONTEXTS[type] || type }
 
       builder = Interactions::OptionBuilder.new
       permission_builder = Interactions::PermissionBuilder.new
       yield(builder, permission_builder) if block_given?
 
       resp = if server_id
-               API::Application.create_guild_command(@token, profile.id, server_id, name, description, builder.to_a, default_permission, type)
+               API::Application.create_guild_command(@token, profile.id, server_id, name, description, builder.to_a, default_permission, type, integration_types, contexts)
              else
-               API::Application.create_global_command(@token, profile.id, name, description, builder.to_a, default_permission, type)
+               API::Application.create_global_command(@token, profile.id, name, description, builder.to_a, default_permission, type, integration_types, contexts)
              end
       cmd = ApplicationCommand.new(JSON.parse(resp), self, server_id)
 
@@ -858,6 +860,8 @@ module Discordrb
     # @yieldparam [PermissionBuilder]
     def edit_application_command(command_id, server_id: nil, name: nil, description: nil, default_permission: nil, type: :chat_input)
       type = ApplicationCommand::TYPES[type] || type
+      integration_types = integration_types&.map { |type| ApplicationCommand::INTEGRATION_TYPES[type] || type }
+      contexts = contexts&.map { |type| ApplicationCommand::CONTEXTS[type] || type }
 
       builder = Interactions::OptionBuilder.new
       permission_builder = Interactions::PermissionBuilder.new
@@ -865,9 +869,9 @@ module Discordrb
       yield(builder, permission_builder) if block_given?
 
       resp = if server_id
-               API::Application.edit_guild_command(@token, profile.id, server_id, command_id, name, description, builder.to_a, default_permission, type)
+               API::Application.edit_guild_command(@token, profile.id, server_id, command_id, name, description, builder.to_a, default_permission, type, integration_types, contexts)
              else
-               API::Application.edit_guild_command(@token, profile.id, command_id, name, description, builder.to_a, default_permission.type)
+               API::Application.edit_guild_command(@token, profile.id, command_id, name, description, builder.to_a, default_permission.type, integration_types, contexts)
              end
       cmd = ApplicationCommand.new(JSON.parse(resp), self, server_id)
 

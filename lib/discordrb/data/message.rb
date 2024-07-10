@@ -16,8 +16,7 @@ module Discordrb
     alias_method :user, :author
     alias_method :writer, :author
 
-    # @return [Channel] the channel in which this message was sent.
-    attr_reader :channel
+    attr_reader :channel_id
 
     # @return [Time] the timestamp at which this message was sent.
     attr_reader :timestamp
@@ -77,7 +76,7 @@ module Discordrb
     def initialize(data, bot)
       @bot = bot
       @content = data['content']
-      @channel = bot.channel(data['channel_id'].to_i)
+      @channel_id = data['channel_id'].to_i
       @pinned = data['pinned']
       @type = data['type']
       @tts = data['tts']
@@ -87,22 +86,27 @@ module Discordrb
       @referenced_message = Message.new(data['referenced_message'], bot) if data['referenced_message']
       @message_reference = data['message_reference']
 
-      @server = @channel.server
+      @server_id = data['guild_id']&.to_i
 
       @webhook_id = data['webhook_id']&.to_i
 
+      @timestamp = Time.parse(data['timestamp']) if data['timestamp']
+      @edited_timestamp = data['edited_timestamp'].nil? ? nil : Time.parse(data['edited_timestamp'])
+      @edited = !@edited_timestamp.nil?
+      @id = data['id'].to_i
+
       @author = if data['author']
-                  if @webhook_id
+                  if @webhook_id || !channel
                     # This is a webhook user! It would be pointless to try to resolve a member here, so we just create
                     # a User and return that instead.
                     Discordrb::LOGGER.debug("Webhook user: #{data['author']['id']}")
                     User.new(data['author'].merge({ '_webhook' => true }), @bot)
-                  elsif @channel.private?
+                  elsif channel.private?
                     # Turn the message user into a recipient - we can't use the channel recipient
                     # directly because the bot may also send messages to the channel
-                    Recipient.new(bot.user(data['author']['id'].to_i), @channel, bot)
+                    Recipient.new(bot.user(data['author']['id'].to_i), channel, bot)
                   else
-                    member = @channel.server.member(data['author']['id'].to_i)
+                    member = server&.member(data['author']['id'].to_i)
 
                     if member
                       member.update_data(data['member']) if data['member']
@@ -121,11 +125,6 @@ module Discordrb
                   end
                 end
 
-      @timestamp = Time.parse(data['timestamp']) if data['timestamp']
-      @edited_timestamp = data['edited_timestamp'].nil? ? nil : Time.parse(data['edited_timestamp'])
-      @edited = !@edited_timestamp.nil?
-      @id = data['id'].to_i
-
       @emoji = []
 
       @reactions = []
@@ -143,9 +142,9 @@ module Discordrb
       @role_mentions = []
 
       # Role mentions can only happen on public servers so make sure we only parse them there
-      if @channel.text?
+      if channel&.text?
         data['mention_roles']&.each do |element|
-          @role_mentions << @channel.server.role(element.to_i)
+          @role_mentions << server.role(element.to_i)
         end
       end
 
@@ -158,6 +157,18 @@ module Discordrb
       @components = []
       @components = data['components'].map { |component_data| Components.from_data(component_data, @bot) } if data['components']
     end
+
+    # @return [Channel] the channel in which this message was sent.
+    def channel
+      return if !@server_id || !@bot.servers.key?(@server_id)
+
+      @channel ||= @bot.channel(@channel_id)
+    end
+
+    def server
+      @server ||= @bot.server(@server_id) if @server_id
+    end
+
 
     # Replies to this message with the specified content.
     # @deprecated Please use {#respond}.
