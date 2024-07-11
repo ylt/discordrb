@@ -313,8 +313,9 @@ module Discordrb
         properties: properties,
         compress: compress,
         large_threshold: large_threshold,
-        intents: intents
       }
+
+      data[:intents] = intents if token.start_with?('Bot ')
 
       # Don't include the shard key at all if it is nil as Discord checks for its mere existence
       data[:shard] = shard_key if shard_key

@@ -10,8 +10,26 @@ module Discordrb
   # This mixin module does caching stuff for the library. It conveniently separates the logic behind
   # the caching (like, storing the user hashes or making API calls to retrieve things) from the Bot that
   # actually uses it.
+
+
   module Cache
     # Initializes this cache
+
+    class Reference
+      def initialize(type, id)
+        @type = type
+        @id = id
+      end
+
+      def loaded?
+        @id != nil
+      end
+
+      def load
+        @id
+      end
+    end
+
     def init_cache
       @users = {}
 

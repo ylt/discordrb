@@ -318,6 +318,17 @@ module Discordrb
       message: 3
     }.freeze
 
+    INTEGRATION_TYPES = {
+      guild_install: 0,
+      user_install: 1
+    }.freeze
+
+    CONTEXTS = {
+      guild: 0,
+      bot_dm: 1,
+      private_channel: 2
+    }.freeze
+
     # @return [Integer]
     attr_reader :application_id
 
